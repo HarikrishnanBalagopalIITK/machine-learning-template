@@ -7,12 +7,10 @@ import tensorflow.keras as keras
 
 from PIL import Image
 from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import (Activation, BatchNormalization, Conv1D, Conv2D, Conv2DTranspose,
-                                     Conv3D, Conv3DTranspose, Dense, Flatten, Input, LeakyReLU, Reshape)
+from tensorflow.keras.layers import (Activation, BatchNormalization, Conv1D, Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose, Dense, Flatten, Input, LayerNormalization, LeakyReLU, Reshape)
 
 mse_loss = keras.losses.MeanSquaredError()
 bce_loss_logits = keras.losses.BinaryCrossentropy(from_logits=True)
-
 
 def minus_1_plus_1_to_uint8_arr(x):
     return ((x + 1) * 127.5).astype(np.uint8)
@@ -101,7 +99,7 @@ def load_actions_dataset(drive_dir=os.path.join('/', 'content', 'drive')):
 
     return (*prepare_video_dataset(video_images, video_labels), categories, category_to_label)
 
-def create_up_sampler(input_shape, output_shape, activation=None, num_filters=512, min_filters=16, regular_sizes=True):
+def create_up_sampler(input_shape, output_shape, activation=None, num_filters=512, min_filters=16, regular_sizes=True, use_batchnorm=True):
     """
     This function creates a up sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -113,6 +111,9 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=51
     min_filters is the minimum no. of filters any Conv2DTranspose will have.
 
     if regular_sizes is True then width, height, num_filters and min_filters should be a power of 2
+
+    if use_batchnorm is True then batch normalization is used, otherwise layer normalization is used.
+    if using gradient penalty batch normalization cannot be used.
     """
 
     iH, iW, iC = input_shape
@@ -132,7 +133,10 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=51
 
     while iH < oH:
         model.add(Conv2DTranspose(num_filters, 4, 2, 'same', use_bias=False))
-        model.add(BatchNormalization())
+        if use_batchnorm:
+            model.add(BatchNormalization())
+        else:
+            model.add(LayerNormalization(axis=[-3, -2, -1]))
         model.add(Activation('relu'))
         iH *= 2
         if num_filters > min_filters:
@@ -147,7 +151,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=51
 
     return model
 
-def create_down_sampler(input_shape, output_shape, activation=None, num_filters=128, max_filters=512, regular_sizes=True):
+def create_down_sampler(input_shape, output_shape, activation=None, num_filters=128, max_filters=512, regular_sizes=True, use_batchnorm=True):
     """
     This function creates a down sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -159,6 +163,9 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
     max_filters is the maximum no. of filters any Conv2D will have.
 
     if regular_sizes is True then width, height, num_filters and max_filters should be a power of 2
+
+    if use_batchnorm is True then batch normalization is used, otherwise layer normalization is used.
+    if using gradient penalty batch normalization cannot be used.
     """
 
     iH, iW, iC = input_shape
@@ -183,7 +190,10 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
 
     while iH > oH:
         model.add(Conv2D(num_filters, 4, 2, 'same'))
-        model.add(BatchNormalization())
+        if use_batchnorm:
+            model.add(BatchNormalization())
+        else:
+            model.add(LayerNormalization(axis=[-3, -2, -1]))
         model.add(LeakyReLU())
         iH //= 2
         if num_filters < max_filters:
@@ -251,7 +261,7 @@ def test_create_down_sampler():
     print(result)
 
 def test_combined():
-    tgenerator = create_up_sampler((1, 1, 100), (64, 64, 3), activation='tanh')
+    tgenerator = create_up_sampler((1, 1, 100), (64, 64, 3), activation='tanh', use_batchnorm=False)
     print(tgenerator.input_shape, tgenerator.output_shape)
 #     tgenerator.summary()
 
@@ -259,7 +269,7 @@ def test_combined():
     print(treconstructor.input_shape, treconstructor.output_shape)
 #     treconstructor.summary()
 
-    tdiscriminator = create_down_sampler((64, 64, 3), (1, 1, 1), num_filters=16)
+    tdiscriminator = create_down_sampler((64, 64, 3), (1, 1, 1), num_filters=16, use_batchnorm=False)
     print(tdiscriminator.input_shape, tdiscriminator.output_shape)
 #     tdiscriminator.summary()
 
@@ -277,7 +287,7 @@ def test_combined():
     for arr in [ti, tm, tj, to]:
         print(type(arr), arr.shape)
 
-    plt.imshow(utils.minus_1_plus_1_to_uint8_arr(tm[0]))
+    plt.imshow(minus_1_plus_1_to_uint8_arr(tm[0]))
     print(tm[0, 0, :10, 0])
     print(np.all(np.isclose(ti, tj)))
 
@@ -312,4 +322,3 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
-
