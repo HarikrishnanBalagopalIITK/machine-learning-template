@@ -99,7 +99,7 @@ def load_actions_dataset(drive_dir=os.path.join('/', 'content', 'drive')):
 
     return (*prepare_video_dataset(video_images, video_labels), categories, category_to_label)
 
-def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True, kernel_init=None, hidden_activation='relu'):
+def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True, kernel_init=None, hidden_activation=None):
     """
     This function creates a up sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -117,11 +117,15 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
 
     kernel_init is the initializer used for the kernel weights in the conv/conv transpose layers
 
-    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks
+    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks (default is relu).
     """
 
     iH, iW, iC = input_shape
     oH, oW, oC = output_shape
+    if hidden_activation is None:
+        hidden_activation = Activation('relu')
+    else if isinstance(hidden_activation, str):
+        hidden_activation = Activation(hidden_activation)
 
     assert int(np.log2(oW // iW)) == int(np.log2(oH // iH)) # no. of up sample steps should be same for both width and height
 
@@ -144,7 +148,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
             model.add(BatchNormalization())
         else:
             model.add(LayerNormalization(axis=[-3, -2, -1]))
-        model.add(Activation(hidden_activation))
+        model.add(hidden_activation)
         iH *= 2
         if num_filters > min_filters:
             num_filters //= 2
@@ -179,12 +183,15 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
 
     kernel_init is the initializer used for the kernel weights in the conv/conv transpose layers
 
-    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks
+    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks (default is leaky relu).
     """
 
     iH, iW, iC = input_shape
     oH, oW, oC = output_shape
-    hidden_activation = LeakyReLU() if hidden_activation is None else hidden_activation
+    if hidden_activation is None:
+        hidden_activation = LeakyReLU()
+    else if isinstance(hidden_activation, str):
+        hidden_activation = Activation(hidden_activation)
 
     assert int(np.log2(iW // oW)) == int(np.log2(iH // oH)) # no. of down sample steps should be same for both width and height
 
