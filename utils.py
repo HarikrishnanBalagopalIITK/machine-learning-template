@@ -151,7 +151,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
 
     return model
 
-def create_down_sampler(input_shape, output_shape, activation=None, num_filters=128, max_filters=512, regular_sizes=True, use_batchnorm=True):
+def create_down_sampler(input_shape, output_shape, activation=None, num_filters=32, max_filters=512, regular_sizes=True, use_batchnorm=True):
     """
     This function creates a down sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
