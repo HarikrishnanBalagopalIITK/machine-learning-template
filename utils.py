@@ -99,7 +99,7 @@ def load_actions_dataset(drive_dir=os.path.join('/', 'content', 'drive')):
 
     return (*prepare_video_dataset(video_images, video_labels), categories, category_to_label)
 
-def create_up_sampler(input_shape, output_shape, activation=None, num_filters=512, min_filters=16, regular_sizes=True, use_batchnorm=True):
+def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True):
     """
     This function creates a up sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
