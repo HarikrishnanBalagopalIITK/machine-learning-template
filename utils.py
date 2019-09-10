@@ -124,7 +124,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
     oH, oW, oC = output_shape
     if hidden_activation is None:
         hidden_activation = Activation('relu')
-    else if isinstance(hidden_activation, str):
+    elif isinstance(hidden_activation, str):
         hidden_activation = Activation(hidden_activation)
 
     assert int(np.log2(oW // iW)) == int(np.log2(oH // iH)) # no. of up sample steps should be same for both width and height
@@ -190,7 +190,7 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
     oH, oW, oC = output_shape
     if hidden_activation is None:
         hidden_activation = LeakyReLU()
-    else if isinstance(hidden_activation, str):
+    elif isinstance(hidden_activation, str):
         hidden_activation = Activation(hidden_activation)
 
     assert int(np.log2(iW // oW)) == int(np.log2(iH // oH)) # no. of down sample steps should be same for both width and height
