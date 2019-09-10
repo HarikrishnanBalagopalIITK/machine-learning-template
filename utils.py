@@ -99,7 +99,7 @@ def load_actions_dataset(drive_dir=os.path.join('/', 'content', 'drive')):
 
     return (*prepare_video_dataset(video_images, video_labels), categories, category_to_label)
 
-def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True, kernel_init=None):
+def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True, kernel_init=None, hidden_activation='relu'):
     """
     This function creates a up sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -114,6 +114,10 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
 
     if use_batchnorm is True then batch normalization is used, otherwise layer normalization is used.
     if using gradient penalty batch normalization cannot be used.
+
+    kernel_init is the initializer used for the kernel weights in the conv/conv transpose layers
+
+    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks
     """
 
     iH, iW, iC = input_shape
@@ -140,7 +144,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
             model.add(BatchNormalization())
         else:
             model.add(LayerNormalization(axis=[-3, -2, -1]))
-        model.add(Activation('relu'))
+        model.add(Activation(hidden_activation))
         iH *= 2
         if num_filters > min_filters:
             num_filters //= 2
@@ -157,7 +161,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
 
     return model
 
-def create_down_sampler(input_shape, output_shape, activation=None, num_filters=32, max_filters=512, regular_sizes=True, use_batchnorm=True, kernel_init=None):
+def create_down_sampler(input_shape, output_shape, activation=None, num_filters=32, max_filters=512, regular_sizes=True, use_batchnorm=True, kernel_init=None, hidden_activation=None):
     """
     This function creates a down sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -172,10 +176,15 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
 
     if use_batchnorm is True then batch normalization is used, otherwise layer normalization is used.
     if using gradient penalty batch normalization cannot be used.
+
+    kernel_init is the initializer used for the kernel weights in the conv/conv transpose layers
+
+    hidden_activation is the activation used in the conv/conv transpose, batchnorm, activation hidden layer blocks
     """
 
     iH, iW, iC = input_shape
     oH, oW, oC = output_shape
+    hidden_activation = LeakyReLU() if hidden_activation is None else hidden_activation
 
     assert int(np.log2(iW // oW)) == int(np.log2(iH // oH)) # no. of down sample steps should be same for both width and height
 
@@ -203,7 +212,7 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
             model.add(BatchNormalization())
         else:
             model.add(LayerNormalization(axis=[-3, -2, -1]))
-        model.add(LeakyReLU())
+        model.add(hidden_activation)
         iH //= 2
         if num_filters < max_filters:
             num_filters *= 2
