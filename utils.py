@@ -99,7 +99,7 @@ def load_actions_dataset(drive_dir=os.path.join('/', 'content', 'drive')):
 
     return (*prepare_video_dataset(video_images, video_labels), categories, category_to_label)
 
-def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True):
+def create_up_sampler(input_shape, output_shape, activation=None, num_filters=256, min_filters=16, regular_sizes=True, use_batchnorm=True, kernel_init=None):
     """
     This function creates a up sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -132,7 +132,10 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
     model = Sequential([Input(shape=input_shape)])
 
     while iH < oH:
-        model.add(Conv2DTranspose(num_filters, 4, 2, 'same', use_bias=False))
+        if kernel_init is not None:
+            model.add(Conv2DTranspose(num_filters, 4, 2, 'same', use_bias=False, kernel_initializer=kernel_init))
+        else:
+            model.add(Conv2DTranspose(num_filters, 4, 2, 'same', use_bias=False))
         if use_batchnorm:
             model.add(BatchNormalization())
         else:
@@ -142,7 +145,10 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
         if num_filters > min_filters:
             num_filters //= 2
 
-    model.add(Conv2DTranspose(oC, 3, 1, 'same', use_bias=True))
+    if kernel_init is not None:
+        model.add(Conv2DTranspose(oC, 3, 1, 'same', use_bias=True, kernel_initializer=kernel_init))
+    else:
+        model.add(Conv2DTranspose(oC, 3, 1, 'same', use_bias=True))
 
     if activation is not None:
         model.add(Activation(activation))
@@ -151,7 +157,7 @@ def create_up_sampler(input_shape, output_shape, activation=None, num_filters=25
 
     return model
 
-def create_down_sampler(input_shape, output_shape, activation=None, num_filters=32, max_filters=512, regular_sizes=True, use_batchnorm=True):
+def create_down_sampler(input_shape, output_shape, activation=None, num_filters=32, max_filters=512, regular_sizes=True, use_batchnorm=True, kernel_init=None):
     """
     This function creates a down sampler that takes in 3d tensors of shape input_shape and produces 3d tensors of shape output_shape. 
     3d tensor shape should be of the form (height, width, channels). example: (64, 64, 3)
@@ -189,7 +195,10 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
         num_filters *= 2
 
     while iH > oH:
-        model.add(Conv2D(num_filters, 4, 2, 'same'))
+        if kernel_init is not None:
+            model.add(Conv2D(num_filters, 4, 2, 'same', kernel_initializer=kernel_init))
+        else:
+            model.add(Conv2D(num_filters, 4, 2, 'same'))
         if use_batchnorm:
             model.add(BatchNormalization())
         else:
@@ -199,7 +208,10 @@ def create_down_sampler(input_shape, output_shape, activation=None, num_filters=
         if num_filters < max_filters:
             num_filters *= 2
 
-    model.add(Conv2D(oC, 4, 1, 'same'))
+    if kernel_init is not None:
+        model.add(Conv2D(oC, 4, 1, 'same', kernel_initializer=kernel_init))
+    else:
+        model.add(Conv2D(oC, 4, 1, 'same'))
 
     if activation is not None:
         model.add(Activation(activation))
